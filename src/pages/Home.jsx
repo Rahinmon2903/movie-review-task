@@ -24,14 +24,23 @@ const Home = () => {
   // Function to fetch movies
   const fetchData = async (pageno,query) => {
     try {
-      // "s=avengers" returns a list of movies related to Avengers
+     
       const response = await axios.get(
         `https://www.omdbapi.com/?apikey=80440b73&s=${query}&page=${pageno}`
       );
 
      const movies=response.data.Search || [];
+
+      const Detialedinfo= await Promise.all(
+        movies.map(async (ele) => {
+            const detials= await axios.get(`https://www.omdbapi.com/?apikey=80440b73&i=${ele.imdbID}&plot=short`)
+
+            return detials.data ;
+        })
+
+      )
     
-        setData((prev)=>[...prev,...movies]);
+        setData((prev)=>[...prev,...Detialedinfo]);
      
        
       
