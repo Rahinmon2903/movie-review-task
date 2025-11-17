@@ -128,22 +128,9 @@ src/
  └── index.js
 
 🔗 API Integration
-Search Movies
-export const searchMovies = (query, type) => {
-  let url = `${BASE_URL}?apikey=${API_KEY}&s=${query}`;
-  if (type) url += `&type=${type}`;
-
-  return axios.get(url);
-};
-
-Get Movie Details
-export const getMovieDetails = (id) => {
-  return axios.get(`${BASE_URL}?apikey=${API_KEY}&i=${id}&plot=full`);
-};
-
 ▶️ Getting Started
 1️⃣ Clone the repository
-git clone https://github.com/your-username/cineverse.git
+git clone https://github.com/Rahinmon2903/movie-review-task
 
 2️⃣ Install dependencies
 npm install
