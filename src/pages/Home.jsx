@@ -31,24 +31,44 @@ const Home = () => {
   }, [search, moviesData]);
 
   useEffect(() => {
-    const finalQuery = search.trim() === "" ? "Avengers" : search;
-    (async () => {
-      try {
-        const res = await searchMovies(finalQuery, moviesData);
-        const movies = res.data.Search || [];
-        const detailed = await Promise.all(
-          movies.map(async (m) => {
-            const d = await getMovieDetails(m.imdbID);
-            return d.data;
-          })
+  const query = search.trim() === "" ? "Avengers" : search.trim();
+
+  (async () => {
+    try {
+      const res = await searchMovies(query, moviesData);
+
+      //  local filter incase of error
+      if (!res.data || res.data.Response === "False") {
+        const filtered = moviesData.filter(m =>
+          m.Title.toLowerCase().includes(query.toLowerCase())
         );
-        setData(detailed);
-      } catch (err) {
-        console.error(err);
-        setData([]);
+        setData(filtered);
+        return;
       }
-    })();
-  }, [search, moviesData]);
+
+      const movies = res.data.Search || [];
+
+      // Fetch details for each movie
+      const detailed = await Promise.all(
+        movies.map(async (m) => {
+          const d = await getMovieDetails(m.imdbID);
+          return d.data;
+        })
+      );
+
+      setData(detailed);
+
+    } catch (err) {
+      console.error(err);
+
+      // in case od error and it is optional
+      const fallback = moviesData.filter(m =>
+        m.Title.toLowerCase().includes(query.toLowerCase())
+      );
+      setData(fallback);
+    }
+  })();
+}, [search, moviesData]);
 
   // --- Local Pagination ---
   const lastIndex = currentPage * postsPerPage;
