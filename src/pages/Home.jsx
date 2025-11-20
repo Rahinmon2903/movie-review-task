@@ -6,9 +6,12 @@ import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { searchMovies, getMovieDetails } from "../API/Omdbapi";
 import NoResults from "../Component/NoResults";
 import Pagination from "../Component/Pagination";
+import Loading from "../Component/Loading";
 
 const Home = () => {
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const [ratings, setRatings] = useState(() => {
     const saved = localStorage.getItem("movies-review");
     return saved ? JSON.parse(saved) : {};
@@ -30,24 +33,19 @@ const Home = () => {
     setCurrentPage(1);
   }, [search]);
 
-  
+  // Fetch Movies
   useEffect(() => {
     const query = search.trim() === "" ? "Avengers" : search.trim();
+
+    setLoading(true); // Start loading
 
     (async () => {
       try {
         const res = await searchMovies(query);
-     
 
-        
-
-        //  if there is no data it will set empty array
-        if (
-          !res.data ||
-          res.data.Response === "False" ||
-          !res.data.Search
-        ) {
+        if (!res.data || res.data.Response === "False" || !res.data.Search) {
           setData([]);
+          setLoading(false);
           return;
         }
 
@@ -67,6 +65,8 @@ const Home = () => {
         console.error(err);
         setData([]);
       }
+
+      setLoading(false); // once api ends set it to false so the data will show
     })();
   }, [search]);
 
@@ -76,13 +76,13 @@ const Home = () => {
   const currentPosts = data.slice(firstIndex, lastIndex);
   const totalPages = Math.ceil(data.length / postsPerPage);
 
+  //used toggle for insert and delete
+
   const toggleFavorite = (movie) => {
     const exists = favorites.some((f) => f.imdbID === movie.imdbID);
 
     if (exists) {
-      const updated = favorites.filter(
-        (f) => f.imdbID !== movie.imdbID
-      );
+      const updated = favorites.filter((f) => f.imdbID !== movie.imdbID);
       setFavorities(updated);
     } else {
       setFavorities((prev) => [movie, ...prev]);
@@ -90,10 +90,13 @@ const Home = () => {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#050506] via-[#070707] to-[#020202] text-white px-6 py-10">
+    <main className="min-h-screen bg-black text-white px-6 py-10">
       <div className="max-w-7xl mx-auto">
 
-        {currentPosts.length > 0 ? (
+        {/* Loading Component */}
+        {loading ? (
+          <Loading />
+        ) : currentPosts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
             {currentPosts.map((movie) => {
               const fav = favorites.some((f) => f.imdbID === movie.imdbID);
@@ -101,7 +104,6 @@ const Home = () => {
               return (
                 <div key={movie.imdbID} className="group relative">
 
-                  {/* Poster */}
                   <Link to={`/movies/${movie.imdbID}`}>
                     <div className="relative rounded-2xl overflow-hidden shadow-lg">
                       <img
@@ -121,14 +123,13 @@ const Home = () => {
                     </div>
                   </Link>
 
-                  {/* Favorite Button */}
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       toggleFavorite(movie);
                     }}
-                    className="absolute top-3 right-3 bg-black/60 p-2 rounded-full hover:scale-110"
+                    className="absolute top-3 right-3 bg-black/60 p-2 rounded-full hover:scale-110 transition-transform"
                   >
                     {fav ? (
                       <AiFillHeart className="w-6 h-6 text-red-500" />
@@ -137,7 +138,6 @@ const Home = () => {
                     )}
                   </button>
 
-                  {/* Rating + Year */}
                   <div className="mt-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-gray-400">📅 {movie.Year}</p>
@@ -189,7 +189,6 @@ const Home = () => {
           <NoResults />
         )}
 
-        {/* Pagination */}
         <Pagination
           totalPages={totalPages}
           currentPage={currentPage}
@@ -201,4 +200,3 @@ const Home = () => {
 };
 
 export default Home;
-
