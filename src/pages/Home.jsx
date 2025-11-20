@@ -13,8 +13,8 @@ const Home = () => {
     const saved = localStorage.getItem("movies-review");
     return saved ? JSON.parse(saved) : {};
   });
-  const { search, moviesData, favorites, setFavorities } =
-    useContext(myContext);
+
+  const { search, favorites, setFavorities } = useContext(myContext);
 
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 6;
@@ -25,134 +25,123 @@ const Home = () => {
     localStorage.setItem("movies-review", JSON.stringify(updated));
   };
 
+  // Reset page when search changes
   useEffect(() => {
     setCurrentPage(1);
-    setData([]);
-  }, [search, moviesData]);
+  }, [search]);
 
+  
   useEffect(() => {
-  const query = search.trim() === "" ? "Avengers" : search.trim();
+    const query = search.trim() === "" ? "Avengers" : search.trim();
 
-  (async () => {
-    try {
-      const res = await searchMovies(query, moviesData);
+    (async () => {
+      try {
+        const res = await searchMovies(query);
+     
 
-      //  local filter incase of error
-      if (!res.data || res.data.Response === "False") {
-        const filtered = moviesData.filter(m =>
-          m.Title.toLowerCase().includes(query.toLowerCase())
+        
+
+        //  if there is no data it will set empty array
+        if (
+          !res.data ||
+          res.data.Response === "False" ||
+          !res.data.Search
+        ) {
+          setData([]);
+          return;
+        }
+
+        const movies = res.data.Search;
+
+        // Fetch detailed info
+        const detailed = await Promise.all(
+          movies.map(async (m) => {
+            const d = await getMovieDetails(m.imdbID);
+            return d.data;
+          })
         );
-        setData(filtered);
-        return;
+
+        setData(detailed);
+
+      } catch (err) {
+        console.error(err);
+        setData([]);
       }
+    })();
+  }, [search]);
 
-      const movies = res.data.Search || [];
-
-      // Fetch details for each movie
-      const detailed = await Promise.all(
-        movies.map(async (m) => {
-          const d = await getMovieDetails(m.imdbID);
-          return d.data;
-        })
-      );
-
-      setData(detailed);
-
-    } catch (err) {
-      console.error(err);
-
-      // in case od error and it is optional
-      const fallback = moviesData.filter(m =>
-        m.Title.toLowerCase().includes(query.toLowerCase())
-      );
-      setData(fallback);
-    }
-  })();
-}, [search, moviesData]);
-
-  // --- Local Pagination ---
+  // Pagination
   const lastIndex = currentPage * postsPerPage;
   const firstIndex = lastIndex - postsPerPage;
   const currentPosts = data.slice(firstIndex, lastIndex);
   const totalPages = Math.ceil(data.length / postsPerPage);
 
-  const handleCart = (movie) => {
-    const exists = favorites.some((ele) => ele.imdbID === movie.imdbID);
+  const toggleFavorite = (movie) => {
+    const exists = favorites.some((f) => f.imdbID === movie.imdbID);
+
     if (exists) {
-      alert("Already added");
+      const updated = favorites.filter(
+        (f) => f.imdbID !== movie.imdbID
+      );
+      setFavorities(updated);
     } else {
-      setFavorities((prev) => [...prev, movie]);
+      setFavorities((prev) => [movie, ...prev]);
     }
   };
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#050506] via-[#070707] to-[#020202] text-white px-6 py-10">
       <div className="max-w-7xl mx-auto">
-        {/* Grid */}
+
         {currentPosts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
             {currentPosts.map((movie) => {
               const fav = favorites.some((f) => f.imdbID === movie.imdbID);
+
               return (
                 <div key={movie.imdbID} className="group relative">
-                  {/* Poster Card */}
+
+                  {/* Poster */}
                   <Link to={`/movies/${movie.imdbID}`}>
-                    <div className="relative rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] hover:shadow-[0_30px_80px_rgba(255,0,0,0.18)] transition-shadow duration-300 transform-gpu hover:translate-y-[-4px]">
+                    <div className="relative rounded-2xl overflow-hidden shadow-lg">
                       <img
                         src={
                           movie.Poster === "N/A"
-                            ? "https://deadline.com/wp-content/uploads/2016/06/movie-theater1.jpg?crop=607px%2C1005px%2C2808px%2C1574px&resize=681%2C383"
+                            ? "https://deadline.com/wp-content/uploads/2016/06/movie-theater1.jpg"
                             : movie.Poster
                         }
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src =
-                            "https://deadline.com/wp-content/uploads/2016/06/movie-theater1.jpg?crop=607px%2C1005px%2C2808px%2C1574px&resize=681%2C383";
+                            "https://deadline.com/wp-content/uploads/2016/06/movie-theater1.jpg";
                         }}
                         alt={movie.Title}
-                        className="w-full h-80 object-cover block transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-80 object-cover"
                       />
-
-                      <div className="absolute inset-0 pointer-events-none rounded-2xl ring-0 group-hover:ring-4 group-hover:ring-red-600/20 transition-all duration-300"></div>
-
-                      {/* title */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-250 flex items-end">
-                        <div className="p-4">
-                          <h3 className="text-lg font-bold leading-tight line-clamp-2">
-                            {movie.Title}
-                          </h3>
-                        </div>
-                      </div>
                     </div>
                   </Link>
 
+                  {/* Favorite Button */}
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (fav) {
-                        // remove
-                        const updated = favorites.filter(
-                          (f) => f.imdbID !== movie.imdbID
-                        );
-                        setFavorities(updated);
-                      } else {
-                        setFavorities((prev) => [movie, ...prev]);
-                      }
+                      toggleFavorite(movie);
                     }}
-                    className="absolute top-3 right-3 z-20 bg-black/60 backdrop-blur-sm p-2 rounded-full hover:scale-110 transition-transform"
+                    className="absolute top-3 right-3 bg-black/60 p-2 rounded-full hover:scale-110"
                   >
                     {fav ? (
-                      <AiFillHeart className="w-6 h-6 text-red-500 drop-shadow-md" />
+                      <AiFillHeart className="w-6 h-6 text-red-500" />
                     ) : (
                       <AiOutlineHeart className="w-6 h-6 text-white/90" />
                     )}
                   </button>
 
-                  {/* year and stars */}
+                  {/* Rating + Year */}
                   <div className="mt-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-gray-400">📅 {movie.Year}</p>
+
                       <div className="flex items-center gap-2">
                         {[...Array(10)].map((_, i) => {
                           const star = i + 1;
@@ -164,12 +153,11 @@ const Home = () => {
                                 e.stopPropagation();
                                 handleRating(movie.imdbID, star);
                               }}
-                              className={`text-lg transition-transform ${
+                              className={`text-lg ${
                                 star <= (ratings[movie.imdbID] || 0)
                                   ? "text-red-500 scale-110"
                                   : "text-gray-600 hover:text-red-400"
                               }`}
-                              aria-label={`Rate ${star}`}
                             >
                               ★
                             </button>
@@ -186,12 +174,11 @@ const Home = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleCart(movie);
+                        toggleFavorite(movie);
                       }}
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md transition-all"
+                      className="mt-4 w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700"
                     >
-                      <span>❤️</span>
-                      Add to Favorites
+                      ❤️ Add to Favorites
                     </button>
                   </div>
                 </div>
@@ -214,3 +201,4 @@ const Home = () => {
 };
 
 export default Home;
+

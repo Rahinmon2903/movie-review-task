@@ -5,7 +5,9 @@ const BASE_URL = "https://www.omdbapi.com/";
 
 export const searchMovies=(query, type)=>{
 
-   let url = `${BASE_URL}?apikey=${API_KEY}&s=${query}`;
+  const finalquery= query.length <= 2 ? `${query}*` : query ;
+
+   let url = `${BASE_URL}?apikey=${API_KEY}&s=${finalquery}&page=1`;
    if(type){
     url +=`&type=${type}`
     
